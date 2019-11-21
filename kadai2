@@ -1,0 +1,99 @@
+<html>
+    <head><meta charset="utf-8"></head>
+    
+    <body>
+        <form method="post">
+            <input type="date"name="dates"vlue="2000-01-01">
+            -
+            <input type="date"name="datee"value="2019-01-01">
+            <input type="submit"name="submit"value="送信">
+        </form>
+        <?php
+            $logs=file("/var/log/httpd/access.log",FILE_IGNORE_NEW_LINES);
+            $count=array_fill(0,26,0);
+            $name=array();
+            $t="0";
+            $result=0;
+            $name_result=array();
+            $date_s=new DateTime("2000-01-01");
+            $date_e=new DateTime("2037-12-31");
+            if(isset($_POST["submit"])){
+                $date_s=new DateTime($_POST["dates"]);
+                $date_e=new DateTime($_POST["datee"]);
+            }
+        
+            //logの読み取り
+            foreach($logs as $log){
+                $log_s=strstr($log,'[');
+                $t="0";
+                
+                //日付があってるかの処理
+                $log_date=substr($log_s,1,11);
+                $date=str_replace('/','-',$log_date);
+                $date=new DateTime($date);
+                
+                if($date > $date_s && $date_e > $date){
+                    $log_time=strstr($log_s,']',true);
+                    $time=substr($log_time,-5);
+                    $log_name=strstr($log,' ',true);
+                
+                    //ホスト名ごとのカウンタ
+                    for($i=0;isset($name[$i]["0"]);$i++){
+                        if($log_name == $name[$i]["0"]){
+                            $name[$i][1]++;
+                            $t="1";
+                        }
+                    }
+                    //新しいホスト名が出てきた時の処理
+                    if($t == "0"){
+                        array_push($name,[$log_name,"1"]);
+                    }
+                
+                    //タイムゾーンのカウンタ
+                    for($i="0";$i<="13";$i++){
+                        if("+".sprintf('%02d',$i)."00" == $time){
+                            $count[$i]++;
+                        }
+                        if("-".sprintf('%02d',$i)."00" == $time){
+                            $count[$i+13]++;
+                        }
+                    }
+                }
+            }
+        
+            //ホスト名の回数順並び替え
+            for($i=0;isset($name[$i][0]);$i++){
+                $max=$name[$i][1];
+                for($j=0;isset($name[$j][0]);$j++){
+                    if($max<=$name[$j][1] ){
+                        $max=$name[$j][1];
+                        $result=$j;
+                    }
+                }
+                $name[$result][1]="0";
+                $name_result[$i][0]=$name[$result][0];
+                $name_result[$i][1]=$max;
+            }
+            
+            if(isset($_POST["submit"])){
+                echo $date_s->format('Y-m-d')."~".$date_e->format('Y-m-d')."<br>";
+            }
+            //＋側のタイムゾーンの回数表示
+            for($i=0;$i<=13;$i++){
+                echo "+".sprintf('%02d',$i)."00"." : ";
+                echo $count[$i]."<br>";
+            }
+            //-側のタイムゾーンの回数表示
+            for($i=1;$i<=12;$i++){
+                echo "-".sprintf('%02d',$i)."00"." : ";
+                echo $count[$i+13]."<br>";
+            }
+        
+            //ホスト名の回数表示
+            for($i=0;isset($name_result[$i][0]);$i++){
+                echo $name_result[$i][0]." : ".$name_result[$i][1]."<br>";
+            }
+            echo "end";
+        ?>
+    </body>
+</html>
