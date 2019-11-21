@@ -1,0 +1,82 @@
+<html>
+    <head><meta charset="utf-8"></head>
+    
+    <body>
+        <?php
+            $count=array_fill(0,26,0);
+            $name=array();
+            $t="0";
+            $result=0;
+            $name_result=array();
+            $file_num="1";//これがファイルの総数
+            $filename=array();
+            $filename[0]="access.log";
+            $filename[1]="access2.log";//ファイル名をここに配列として追加していく。
+            $max=0;
+        
+            for($num=0;$num<$file_num;$num++);{
+                $logs=file("/var/log/httpd/".$filename[$num],FILE_IGNORE_NEW_LINES);
+                
+                //logの読み取り
+                foreach($logs as $log){
+                    $log_time=strstr($log,']',true);
+                    $time=substr($log_time,-5);
+                    $log_name=strstr($log,' ',true);
+                
+                    //ホスト名ごとのカウンタ
+                    for($i=0;isset($name[$i]["0"]);$i++){
+                        if($log_name == $name[$i]["0"]){
+                            $name[$i][1]++;
+                            $t="1";
+                        }
+                    }
+                    //新しいホスト名が出てきた時の処理
+                    if($t == "0"){
+                        $name[] = [$log_name,"1"];
+                    }
+                
+                    //タイムゾーンのカウンタ
+                    for($i="0";$i<="13";$i++){
+                        if("+".sprintf('%02d',$i)."00" == $time){
+                            $count[$i]++;
+                        }
+                        if("-".sprintf('%02d',$i)."00" == $time){
+                            $count[$i+13]++;
+                        }
+                    }
+                }
+            }
+            
+            //ホスト名の回数順並び替え
+            for($i=0;isset($name[$i][0]);$i++){
+                $max=$name[$i][1];
+                for($j=$i+1;isset($name[$j][0]);$j++){
+                    if($max<$name[$j][1] ){
+                        $max=$name[$j][1];
+                        $result=$j;
+                    }
+                }
+                $name[$result][1]="0";
+                $name_result[$i][0]=$name[$result][0];
+                $name_result[$i][1]=$max;
+            }
+            
+            //＋側のタイムゾーンの回数表示
+            for($i=0;$i<=13;$i++){
+                echo "+".sprintf('%02d',$i)."00"." : ";
+                echo $count[$i]."<br>";
+            }
+            //-側のタイムゾーンの回数表示
+            for($i=1;$i<=12;$i++){
+                echo "-".sprintf('%02d',$i)."00"." : ";
+                echo $count[$i+13]."<br>";
+            }
+        
+            //ホスト名の回数表示
+            for($i=0;isset($name_result[$i][0]);$i++){
+                echo $name_result[$i][0]." , ".$name_result[$i][1]."<br>";
+            }
+            echo "end";
+        ?>
+    </body>
+</html>
